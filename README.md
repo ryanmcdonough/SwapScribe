@@ -1,6 +1,10 @@
-# Content Anonymiser
+# SwapScribe
 
 This web application provides tools for anonymising and de-anonymising content, particularly useful for managing sensitive information in text data. It allows users to define categories (e.g., Person, Location, Project) and replace instances of these categories in the content with anonymised labels. Additionally, it supports saving and loading collections of categories for efficient data management.
+
+## Hosted Version
+
+https://loquacious-zuccutto-019ed2.netlify.app
 
 ## Features
 
