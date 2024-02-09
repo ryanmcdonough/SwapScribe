@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+
+<html lang="en" class="h-100">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Demo</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+</head>
+
+<body class="d-flex flex-column h-100">
+
+    <nav class="py-2 mb-2 bg-body-tertiary border-bottom">
+
+        <div class="container d-flex flex-wrap justify-content-between align-items-center">
+
+
+            <div class="d-flex align-items-center">
+
+                <select id="savedCollections" class="form-select me-2">
+
+                    <option value="">Select a collection</option>
+
+
+                </select>
+
+                <button id="loadCollectionBtn" class="btn btn-outline-primary me-2">Load</button>
+
+                <button id="saveCollectionBtn" class="btn btn-outline-success">Save</button>
+
+            </div>
+
+
+            <div class="nav">
+
+                <button id="anonymiseBtn" class="btn btn-primary text-white fw-bold me-2">Anonymise</button>
+
+                <button id="deanonymiseBtn" class="btn btn-danger text-white fw-bold">De-anonymise</button>
+
+            </div>
+
+        </div>
+
+    </nav>
+
+    <div class="container">
+
+        <div class="card">
+
+            <div class="card-header">
+
+                Category Management
+
+            </div>
+
+            <div class="card-body">
+
+                <p>Add the types of things you want to anonymise here, such as Person, Tool, Location, Project</p>
+                <p>Click on the item added such as a name to remove it.</p>
+
+
+                <div class="d-flex mb-4">
+
+                    <div class="flex-grow-1 d-flex justify-content-between">
+
+                        <input type="text" id="newCategoryName" placeholder="New Category Name"
+                            class="form-control shadow-sm me-2" />
+
+                        <button id="addCategoryBtn" class="btn btn-primary text-white fw-bold">Add</button>
+
+                    </div>
+
+                </div>
+
+                <div id="categoryInputs" class="mb-4">
+
+                    <!-- Category inputs will be dynamically added here -->
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="d-flex mt-3">
+
+            <div class="w-50">
+
+                <div class="card">
+
+                    <div class="card-header">
+
+                        Content
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <textarea id="originalContent" rows="10" class="form-control shadow-sm mb-2"
+                            placeholder="Paste content here..."></textarea>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="w-50 ms-2">
+
+                <div class="card">
+
+                    <div class="card-header">
+
+                        Result
+
+                    </div>
+
+                    <div class="card-body">
+
+                        <textarea id="result" rows="10" class="form-control shadow-sm mb-2" readonly
+                            placeholder="Converted content will appear here..."></textarea>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <footer class="footer mt-auto py-3 bg-light">
+        <div class="container text-center">
+            <span class="text-muted">Built by <a href="https://ryanmcdonough.co.uk" target="_blank">Ryan
+                    McDonough</a>.</span>
+        </div>
+    </footer>
+
+    <script>
+        // Define variables to hold DOM elements for easy access.
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+        const anonymiseBtn = document.getElementById('anonymiseBtn');
+        const deAnonymiseBtn = document.getElementById('deanonymiseBtn');
+        const categoryInputsContainer = document.getElementById('categoryInputs');
+
+        // Initialize an object to keep track of categories and their counts.
+        let categoryCounters = {};
+
+        // Initialize an object to map anonymised names back to their original names.
+        let mappings = {};
+
+        // Event listener for adding a new category.
+        addCategoryBtn.addEventListener('click', () => {
+            const categoryName = document.getElementById('newCategoryName').value.trim();
+            if (categoryName) {
+                addCategoryInput(categoryName);
+                document.getElementById('newCategoryName').value = '';
+            } else {
+                alert('Please enter a category name.');
+            }
+        });
+
+        // Event listener for the anonymise button to trigger content anonymisation.
+        anonymiseBtn.addEventListener('click', () => {
+            anonymiseContent();
+        });
+
+        // Event listener for the de-anonymise button to revert content to its original form.
+        deAnonymiseBtn.addEventListener('click', () => {
+            deAnonymiseContent();
+        });
+
+        // Function to add items to a category's list.
+        function addItemToList(uniqueId, itemName) {
+            const listItem = document.createElement('div');
+            listItem.classList.add('list-group-item', 'me-2');
+            listItem.textContent = itemName;
+            listItem.style.cursor = 'pointer';
+            listItem.addEventListener('click', function () {
+                listItem.remove();
+            });
+            document.getElementById(`list-${uniqueId}`).appendChild(listItem);
+        }
+
+        // Function to add a new category input field.
+        function addCategoryInput(categoryName) {
+            let lastRow = document.querySelector('#categoryInputs .row:last-child');
+            if (!lastRow || lastRow.children.length >= 2) {
+                lastRow = document.createElement('div');
+                lastRow.classList.add('row', 'mb-4');
+                document.getElementById('categoryInputs').appendChild(lastRow);
+            }
+
+            const col = document.createElement('div');
+            col.classList.add('col-md-6');
+            const uniqueId = Date.now();
+            col.innerHTML = `
+        <label class="form-label" for="input-${uniqueId}">${categoryName} Name:</label>
+        <div class="input-group mb-2">
+            <input type="text" class="form-control categoryInput" data-category="${categoryName}" id="input-${uniqueId}" aria-label="${categoryName} Name" aria-describedby="button-addon-${uniqueId}">
+            <button class="btn btn-outline-primary" type="button" id="addBtn-${uniqueId}">Add</button>
+        </div>
+        <div class="list-group d-flex flex-row" id="list-${uniqueId}"></div>
+    `;
+            lastRow.appendChild(col);
+
+            document.getElementById(`addBtn-${uniqueId}`).addEventListener('click', function () {
+                const inputElement = document.getElementById(`input-${uniqueId}`);
+                const itemName = inputElement.value.trim();
+                if (itemName) {
+                    addItemToList(uniqueId, itemName);
+                    inputElement.value = '';
+                }
+            });
+
+            categoryCounters[categoryName] = (categoryCounters[categoryName] || 0) + 1;
+        }
+
+        // Function to replace original names with anonymised versions in the content.
+        function anonymiseContent() {
+            const originalContent = document.getElementById('originalContent').value;
+            let content = originalContent;
+            document.querySelectorAll('.categoryInput').forEach(input => {
+                const categoryName = input.dataset.category;
+                const uniqueId = input.id.match(/\d+$/)[0];
+                const listId = `list-${uniqueId}`;
+                const items = document.querySelectorAll(`#${listId} .list-group-item`);
+                items.forEach((item, index) => {
+                    const name = item.textContent;
+                    if (name) {
+                        const anonymisedName = `${categoryName} ${indexToLetter(categoryCounters[categoryName]++)}`;
+                        mappings[anonymisedName] = name;
+                        const regex = new RegExp(name, 'g');
+                        content = content.replace(regex, anonymisedName);
+                    }
+                });
+            });
+            document.getElementById('result').value = content;
+        }
+
+        // Function to revert anonymised names back to their original form.
+        function deAnonymiseContent() {
+            let content = document.getElementById('originalContent').value;
+            Object.keys(mappings).forEach(anonymisedName => {
+                const originalName = mappings[anonymisedName];
+                const regex = new RegExp(anonymisedName, 'g');
+                content = content.replace(regex, originalName);
+            });
+            document.getElementById('result').value = content;
+        }
+
+        // Helper function to convert an index to a letter (A, B, C, ..., Z, AA, AB, ...).
+        function indexToLetter(index) {
+            let letter = '';
+            while (index >= 0) {
+                letter = String.fromCharCode((index % 26) + 65) + letter;
+                index = Math.floor(index / 26) - 1;
+            }
+            return letter;
+        }
+
+        // Load saved collections from localStorage when the document content has been loaded.
+        document.addEventListener('DOMContentLoaded', function () {
+            loadSavedCollections();
+        });
+
+        // Event listener for saving collections to localStorage.
+        document.getElementById('saveCollectionBtn').addEventListener('click', function () {
+            // Get the selected collection name from the dropdown.
+            let collectionName = document.getElementById('savedCollections').value;
+
+            // Initialize a flag to track whether this is a new collection.
+            let isNewCollection = true;
+
+            // Check if a collection is selected other than the default prompt.
+            if (collectionName && collectionName !== "Select a collection") {
+                // If a collection is selected, confirm with the user if they want to update it.
+                const update = confirm("Do you want to update the selected collection?");
+                if (update) {
+                    // Set the flag to false as this is an update operation.
+                    isNewCollection = false;
+                } else {
+                    // Reset collectionName if the user decides not to update.
+                    collectionName = '';
+                }
+            }
+
+            // If it's determined to be a new collection or no collection was initially selected.
+            if (isNewCollection || collectionName === '') {
+                // Prompt the user to enter a name for the new collection.
+                collectionName = prompt("Enter a name for this collection:");
+                // If no name is entered, alert the user and exit the function.
+                if (!collectionName) {
+                    alert("Collection not saved. A name is required.");
+                    return;
+                }
+            }
+
+            // Get existing collections from localStorage or initialize an empty object if none exist.
+            const collections = JSON.parse(localStorage.getItem('collections')) || {};
+
+            // Initialize an object to store the current collection's items.
+            const currentCollection = {};
+
+            // Gather the items from each category input field.
+            document.querySelectorAll('.categoryInput').forEach(input => {
+                const categoryName = input.dataset.category;
+                const uniqueId = input.id.match(/\d+$/)[0]; // Extract the unique ID from the input element's ID.
+                const items = [];
+                // For each list item associated with the category, add its text content to the items array.
+                document.querySelectorAll(`#list-${uniqueId} .list-group-item`).forEach(item => {
+                    items.push(item.textContent);
+                });
+                // Add the items array to the currentCollection object under the relevant category name.
+                currentCollection[categoryName] = items;
+            });
+
+            // Update the collections object with the current collection, keyed by the collectionName.
+            collections[collectionName] = currentCollection;
+
+            // Save the updated collections object back to localStorage.
+            localStorage.setItem('collections', JSON.stringify(collections));
+
+            // Alert the user that the collection has been saved or updated, based on the isNewCollection flag.
+            alert(isNewCollection ? `Collection '${collectionName}' saved!` : `Collection '${collectionName}' updated!`);
+
+            // Reload the saved collections to reflect the changes in the UI.
+            loadSavedCollections();
+        });
+
+
+        // Event listener for loading selected collection from localStorage.
+        document.getElementById('loadCollectionBtn').addEventListener('click', function () {
+            const selectedCollectionName = document.getElementById('savedCollections').value;
+            if (selectedCollectionName) {
+                loadCollection(selectedCollectionName);
+            } else {
+                alert('Please select a collection to load.');
+            }
+        });
+
+        // Function to load a collection by name and populate the UI with its data.
+        function loadCollection(collectionName) {
+            const collections = JSON.parse(localStorage.getItem('collections')) || {};
+            const selectedCollection = collections[collectionName];
+            if (!selectedCollection) {
+                alert('Collection not found.');
+                return;
+            }
+            document.getElementById('categoryInputs').innerHTML = '';
+            Object.keys(selectedCollection).forEach((categoryName, index) => {
+                addCategoryInput(categoryName);
+                selectedCollection[categoryName].forEach(itemName => {
+                    const categoryInput = document.querySelector(`.categoryInput[data-category="${categoryName}"]`);
+                    const uniqueId = categoryInput.id.match(/\d+$/)[0];
+                    addItemToList(uniqueId, itemName);
+                });
+            });
+        }
+
+        // Function to populate the "Saved Collections" dropdown with collections stored in localStorage.
+        function loadSavedCollections() {
+            const collections = JSON.parse(localStorage.getItem('collections') || '{}');
+            const savedCollectionsSelect = document.getElementById('savedCollections');
+            savedCollectionsSelect.innerHTML = '<option value="">Select a collection</option>';
+            Object.keys(collections).forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                savedCollectionsSelect.appendChild(option);
+            });
+        }
+
+    </script>
+
+</body>
+
+</html>
